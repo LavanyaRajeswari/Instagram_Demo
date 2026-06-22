@@ -1,0 +1,79 @@
+package com.web.Instagram.service;
+
+import com.web.Instagram.dto.highlight.HighlightResponse;
+import com.web.Instagram.entity.Highlight;
+import com.web.Instagram.entity.Story;
+import com.web.Instagram.entity.User;
+import com.web.Instagram.repository.HighlightRepository;
+import com.web.Instagram.repository.StoryRepository;
+import com.web.Instagram.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class HighlightService {
+
+    private final HighlightRepository highlightRepository;
+    private final UserRepository userRepository;
+    private final StoryRepository storyRepository;
+
+    public List<HighlightResponse> getUserHighlights(Long userId) {
+        return highlightRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional
+    public HighlightResponse createHighlight(Long userId, String title, List<Long> storyIds, String coverUrl) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<Story> stories = storyRepository.findAllById(storyIds);
+
+        Highlight highlight = Highlight.builder()
+                .title(title)
+                .user(user)
+                .coverUrl(coverUrl)
+                .stories(stories)
+                .build();
+
+        return toResponse(highlightRepository.save(highlight));
+    }
+
+    @Transactional
+    public HighlightResponse updateHighlight(Long highlightId, String title, List<Long> storyIds, String coverUrl) {
+        Highlight highlight = highlightRepository.findById(highlightId)
+                .orElseThrow(() -> new RuntimeException("Highlight not found"));
+
+        if (title != null) highlight.setTitle(title);
+        if (coverUrl != null) highlight.setCoverUrl(coverUrl);
+        if (storyIds != null) {
+            List<Story> stories = storyRepository.findAllById(storyIds);
+            highlight.setStories(stories);
+        }
+
+        return toResponse(highlightRepository.save(highlight));
+    }
+
+    private HighlightResponse toResponse(Highlight h) {
+        List<Long> storyIds = h.getStories() != null
+                ? h.getStories().stream().map(Story::getId).toList()
+                : List.of();
+        return HighlightResponse.builder()
+                .id(h.getId())
+                .title(h.getTitle())
+                .coverUrl(h.getCoverUrl())
+                .storyIds(storyIds)
+                .build();
+    }
+
+    @Transactional
+    public void deleteHighlight(Long highlightId) {
+        highlightRepository.deleteById(highlightId);
+    }
+}

@@ -1,0 +1,17 @@
+package com.web.Instagram.repository;
+
+import com.web.Instagram.entity.Chat;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface ChatRepository extends JpaRepository<Chat, Long> {
+
+    @Query("select c from Chat c where (c.userOne.id = :userId1 and c.userTwo.id = :userId2) or (c.userOne.id = :userId2 and c.userTwo.id = :userId1)")
+    Optional<Chat> findExistingChat(@Param("userId1") Long userId1, @Param("userId2") Long userId2);
+
+    List<Chat> findByUserOneIdOrUserTwoIdOrderByLastMessageAtDesc(Long userOneId, Long userTwoId);
+}
